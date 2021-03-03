@@ -59,12 +59,17 @@ res2 = spark.sql(str2)
 res1.registerTempTable("genre_uid_rev")
 res2.registerTempTable("genre_max_rev")
 
+# res1.show()
+# res2.show()
 sqlString = "select s.genre, t.user_id, s.reviews " + \
     "from " + \
     "genre_uid_rev as t, genre_max_rev as s " + \
     "where t.genre = s.genre and t.reviews = s.reviews order by s.genre"    
 
 res = spark.sql(sqlString)    
-res.show()
+# res.show()
+res.registerTempTable("g_u_mr")
+
+select 
 
 print("--- %s seconds ---" % (time.time() - start_time))
