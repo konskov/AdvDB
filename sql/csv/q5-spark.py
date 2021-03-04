@@ -21,22 +21,6 @@ ratings.registerTempTable("ratings")
 genres.registerTempTable("genres")
 movies.registerTempTable("movies")
 
-# ta arxidia mou pairnw me to akoloutho, sq1.genre is not an aggregate function
-# sqlString = "select s.genre, t.user_id, s.reviews from " + \
-# "(select genre, max(reviews) as reviews from " + \
-# "    (select g._c1 as genre, r._c0 as user_id, count(*) as reviews " + \
-# "    from " + \
-# "    ratings as r join genres as g on g._c0 = r._c1 " + \
-# "    group by g._c1, r._c0 order by genre, reviews desc) as sq1) as s, " + \
-# "( " + \
-# "select g._c1 as genre, r._c0 as user_id, count(*) as reviews " + \
-# "from " + \
-# "ratings as r join genres as g on g._c0 = r._c1 " + \
-# "group by g._c1, r._c0 order by genre, reviews desc " + \
-# ") as t " + \
-# "where s.genre = t.genre and s.reviews = t.reviews " + \
-# "order by s.genre " 
-
 start_time = time.time()
 
 str2 = "select genre, max(reviews) as reviews " + \
@@ -90,7 +74,6 @@ rmin = "select r._c0 as user_id, g._c1 as genre, m._c0 as movie_id, m._c1 as tit
 "ratings as r join genres as g on g._c0 = r._c1 " + \
 "where r._c0 IN (select distinct user_id from g_u_mr) group by genre, user_id order by genre) " 
 
-# spark.dropTempView("g_u_mr")
 res_max = spark.sql(rmax)
 res_min = spark.sql(rmin)
 res_max.createOrReplaceTempView("res_max")
@@ -103,17 +86,22 @@ s = "select s.genre as genre, s.user_id as user_id, " + \
 "where s.genre = rmin.genre and s.genre = rmax.genre " + \
 "and s.user_id = rmin.user_id and s.user_id = rmax.user_id "
 res = spark.sql(s)
-res.show()
-# spark.dropTempView("res_max")
-# spark.dropTempView("res_min")
+# res.show()
+
 res.createOrReplaceTempView("s")
 
-final = "select * from s " + \
+final = "select g.genre, g.user_id, g.reviews, t.fav_title, t.fav_pop, t.fav_rating, " + \
+"t.least_fav_title, t.least_fav_pop, t.least_fav_rating " + \
+"from g_u_mr as g join " + \
+"( " + \
+"select * from s " + \
 "where (genre, user_id, fav_pop, least_fav_pop) in " + \
 "(select genre, user_id, max(fav_pop), max(least_fav_pop) " + \
 "from s " + \
-"group by genre, user_id)"
+"group by genre, user_id) " + \
+") as t on t.genre = g.genre and t.user_id = t.user_id order by genre"
 
 f = spark.sql(final)
 f.show()
 print("--- %s seconds ---" % (time.time() - start_time))
+# trexei se 6 lepta
