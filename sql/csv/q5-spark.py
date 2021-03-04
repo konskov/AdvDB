@@ -79,29 +79,23 @@ res_min = spark.sql(rmin)
 res_max.createOrReplaceTempView("res_max")
 res_min.createOrReplaceTempView("res_min")
 
-s = "select s.genre as genre, s.user_id as user_id, " + \
-"rmax.title as fav_title, rmax.pop as fav_pop, rmax.rating as fav_rating, " + \
-"rmin.title as least_fav_title, rmin.pop as least_fav_pop, rmin.rating as least_fav_rating " + \
-"from g_u_mr as s, res_max as rmax, res_min as rmin " + \
-"where s.genre = rmin.genre and s.genre = rmax.genre " + \
-"and s.user_id = rmin.user_id and s.user_id = rmax.user_id "
-res = spark.sql(s)
-# res.show()
+most_fav = "select * from res_max as r " + \
+"where (r.genre, r.user_id, r.pop) in (select genre, user_id, max(pop) from res_max group by genre, user_id)"
+least_fav = "select * from res_min as r " + \
+"where (r.genre, r.user_id, r.pop) in (select genre, user_id, max(pop) from res_min group by genre, user_id)"
+mf = spark.sql(most_fav)
+lf = spark.sql(least_fav)
+mf.createOrReplaceTempView("most_fav")
+lf.createOrReplaceTempView("least_fav")
 
-res.createOrReplaceTempView("s")
-
-final = "select g.genre, g.user_id, g.reviews, t.fav_title, t.fav_pop, t.fav_rating, " + \
-"t.least_fav_title, t.least_fav_pop, t.least_fav_rating " + \
-"from g_u_mr as g join " + \
-"( " + \
-"select * from s " + \
-"where (genre, user_id, fav_pop, least_fav_pop) in " + \
-"(select genre, user_id, max(fav_pop), max(least_fav_pop) " + \
-"from s " + \
-"group by genre, user_id) " + \
-") as t on t.genre = g.genre and t.user_id = t.user_id order by genre"
-
+final = "select g.genre, g.user_id, g.reviews, t.title, t.pop, t.rating, " + \
+"s.title, s.pop, s.rating " + \
+"from g_u_mr as g, most_fav as t, least_fav as s " + \
+"where s.genre = t.genre and s.genre = g.genre " + \
+"and s.user_id = t.user_id and s.user_id = g.user_id " + \
+"order by g.genre"
+ 
 f = spark.sql(final)
 f.show()
 print("--- %s seconds ---" % (time.time() - start_time))
-# trexei se 6 lepta
+# trexei se 168s
