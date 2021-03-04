@@ -56,51 +56,64 @@ str1 = "select g._c1 as genre, r._c0 as user_id, count(*) as reviews " + \
 res1 = spark.sql(str1)
 res2 = spark.sql(str2)
 
-res1.registerTempTable("genre_uid_rev")
-res2.registerTempTable("genre_max_rev")
+res1.createOrReplaceTempView("genre_uid_rev")
+res2.createOrReplaceTempView("genre_max_rev")
 
 # res1.show()
 # res2.show()
-sqlString = "select s.genre, t.user_id, s.reviews " + \
+sqlString = "select s.genre as genre, t.user_id as user_id, s.reviews as reviews " + \
     "from " + \
     "genre_uid_rev as t, genre_max_rev as s " + \
     "where t.genre = s.genre and t.reviews = s.reviews order by s.genre"    
 
 res = spark.sql(sqlString)    
 # res.show()
-res.registerTempTable("g_u_mr")
+res.createOrReplaceTempView("g_u_mr")
 
-# select m.title, m.popularity
-# from 
-# movies as m, genres as g, ratings as r
-# where r.uid in (45811,8659) and m.id = g.id, r.mid = m.id
-# and m.rating in (select max(r._c2) from 
-# ratings as r join genres as g )
-
-s = "select r._c0 as user, g._c1 as genre, m._c0 as movie_id, m._c1 as title, m._c7 as pop, r._c2 as rating " + \
+rmax = "select r._c0 as user_id, g._c1 as genre, m._c0 as movie_id, m._c1 as title, m._c7 as pop, r._c2 as rating " + \
 "from ratings as r, movies as m, genres as g " + \
 "where m._c0 = r._c1 and m._c0 = g._c0 " + \
-"and r._c0 IN (45811,8659) " + \
+"and r._c0 IN (select distinct user_id from g_u_mr) " + \
 "and (g._c1, r._c0, r._c2) IN " + \
 "(select g._c1 as genre, r._c0 as user_id, max(r._c2) " + \
 "from " + \
 "ratings as r join genres as g on g._c0 = r._c1 " + \
-"where r._c0 IN (45811,8659) group by genre, user_id order by genre) " 
+"where r._c0 IN (select distinct user_id from g_u_mr) group by genre, user_id order by genre) " 
 
-# s = "select r._c0 as user, g._c1 as genre, m._c0 as movie_id, m._c1 as title, m._c7 as pop, r._c2 as rating " + \
-# "from ratings as r, movies as m, genres as g " + \
-# "where m._c0 = r._c1 and m._c0 = g._c0 " + \
-# "and r._c0 IN (45811,8659) " + \
-# "and (g._c1, r._c0, r._c2) IN " + \
-# "(select g._c1 as genre, r._c0 as user_id, max(r._c2) " + \
-# "from " + \
-# "ratings as r join genres as g on g._c0 = r._c1 " + \
-# "where r._c0 IN (45811,8659) group by genre, user_id order by genre) " 
+rmin = "select r._c0 as user_id, g._c1 as genre, m._c0 as movie_id, m._c1 as title, m._c7 as pop, r._c2 as rating " + \
+"from ratings as r, movies as m, genres as g " + \
+"where m._c0 = r._c1 and m._c0 = g._c0 " + \
+"and r._c0 IN (select distinct user_id from g_u_mr) " + \
+"and (g._c1, r._c0, r._c2) IN " + \
+"(select g._c1 as genre, r._c0 as user_id, min(r._c2) " + \
+"from " + \
+"ratings as r join genres as g on g._c0 = r._c1 " + \
+"where r._c0 IN (select distinct user_id from g_u_mr) group by genre, user_id order by genre) " 
 
-# s = "select r._c0 as user_id, g._c1 as genre, max(r._c2), min(r._c2) " + \
-# "from "  + \
-# "ratings as r join genres as g on g._c0 = r._c1 " + \
-# "where r._c0 IN (45811,8659) group by genre, user_id order by genre "
+# spark.dropTempView("g_u_mr")
+res_max = spark.sql(rmax)
+res_min = spark.sql(rmin)
+res_max.createOrReplaceTempView("res_max")
+res_min.createOrReplaceTempView("res_min")
+
+s = "select s.genre as genre, s.user_id as user_id, " + \
+"rmax.title as fav_title, rmax.pop as fav_pop, rmax.rating as fav_rating, " + \
+"rmin.title as least_fav_title, rmin.pop as least_fav_pop, rmin.rating as least_fav_rating " + \
+"from g_u_mr as s, res_max as rmax, res_min as rmin " + \
+"where s.genre = rmin.genre and s.genre = rmax.genre " + \
+"and s.user_id = rmin.user_id and s.user_id = rmax.user_id "
 res = spark.sql(s)
 res.show()
+# spark.dropTempView("res_max")
+# spark.dropTempView("res_min")
+res.createOrReplaceTempView("s")
+
+final = "select * from s " + \
+"where (genre, user_id, fav_pop, least_fav_pop) in " + \
+"(select genre, user_id, max(fav_pop), max(least_fav_pop) " + \
+"from s " + \
+"group by genre, user_id)"
+
+f = spark.sql(final)
+f.show()
 print("--- %s seconds ---" % (time.time() - start_time))
