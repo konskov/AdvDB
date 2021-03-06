@@ -18,11 +18,31 @@ def map1(x, join_key):
     return (fields.pop(join_key),fields)
 
 
-def broadcast_join(rdd1, join_key1, rdd2, join_key2):
-    ''' it is assumed that the two rdds are 
-    in the acceptable format to perform a join
-    (k,v), (k,w)'''
-    
+def broadcast_join(file1, join_key1, file2, join_key2):
+    ''' inputs: two pairs (filename, join_key). filename (ratings.csv) which is in the directory hdfs://master:9000/movies
+    and a column number which corresponds to the column on which we join. Only one-column joins are supported
+    (But this is a feature of course, not a bug :P'''
+
+    def map2(x):
+        '''x is a record from L, x[0] is the key, x[1] the values'''
+        key = x[0]
+        newrecs = []
+        if key in broadcast_small_dict.value.keys():
+            for r_match in broadcast_small_dict.value[key]:
+                newrecs.append(([key] + r_match + x[1]))
+
+        if newrecs:
+            return newrecs
+        else:
+            return []
+   
+    spark = SparkSession.builder.appName('broadcastJoin').getOrCreate()
+    sc = spark.sparkContext
+    rdd1 = sc.textFile("hdfs://master:9000/movies/" + file1)
+    rdd2 = sc.textFile("hdfs://master:9000/movies/" + file2)
+
+    start_time = time.time()
+
     if min(rdd1.count(),rdd2.count()) == rdd1.count():
         small = rdd1
         jks = join_key1
@@ -36,30 +56,31 @@ def broadcast_join(rdd1, join_key1, rdd2, join_key2):
 
     small = small.map(lambda x: map1(x,jks))
     big = big.map(lambda x: map1(x,jkb))
-    # we'll be broadcasting a list
-    # broadcast_small = sc.broadcast(small.collect())   
-    # # print(type(broadcast_small))
+    small_dict = {}
 
-    # s_list = broadcast_small.value
-    # # print(s_list)
-    # s_rdd = sc.parallelize(s_list)
-    # # for i in s_rdd.collect():
-    # #     print(i)
-
-    # res = big.join(s_rdd)
-    res = big.join(small)
-    for i in res.take(120):
+    for i in small.collect():
+        key = i[0]
+        value = i[1]
+        if key in small_dict.keys():
+            small_dict[key].append(value)
+        else:
+            small_dict[key] = []
+            small_dict[key].append(value)
+    # we'll be broadcasting a dict
+    broadcast_small_dict = sc.broadcast(small_dict)   
+   
+    big = big.flatMap(lambda x: map2(x))
+    for i in big.take(120):
         print(i)
-    
+
+    print("Took %s seconds" %(time.time() - start_time))
 
 if __name__ == '__main__':
-    spark = SparkSession.builder.appName('broadcastJoin').getOrCreate()
-    sc = spark.sparkContext
-    rdd1 = sc.textFile("hdfs://master:9000/movies/100lines.csv")
-    rdd2 = sc.textFile("hdfs://master:9000/movies/ratings.csv")
-    start_time = time.time()
+    
     # rdd1 = rdd1.map(lambda x: (x.split(",")[0], x.split(","[1])))
     # rdd2 = rdd2.map(lambda x: map1(x))
-    broadcast_join(rdd2, 1, rdd1, 0)
-    print("Took %s seconds" %(time.time() - start_time))
+    file2 = "ratings.csv"
+    file1 = "100lines.csv"
+    broadcast_join(file2, 1, file1, 0)
+    
 
