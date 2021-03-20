@@ -1,0 +1,79 @@
++---+-----+----+---+---+----------+
+|_c0|  _c1| _c0|_c1|_c2|       _c3|
++---+-----+----+---+---+----------+
+|451|Drama| 390|451|2.0| 978580515|
+|451|Drama| 533|451|2.0| 974647675|
+|451|Drama| 682|451|3.0| 957630720|
+|451|Drama|2383|451|1.0| 956417083|
+|451|Drama|2975|451|2.0|1180657823|
+|451|Drama|2981|451|2.0| 902036771|
+|451|Drama|3019|451|3.0| 847875644|
+|451|Drama|3251|451|3.0| 849630863|
+|451|Drama|3792|451|4.0| 945277919|
+|451|Drama|3950|451|2.0| 949415361|
+|451|Drama|4020|451|3.0| 927569171|
+|451|Drama|4066|451|3.0| 859107793|
+|451|Drama|4323|451|3.5|1081878684|
+|451|Drama|5077|451|3.0|1012862719|
+|451|Drama|5153|451|3.0| 975402624|
+|451|Drama|5519|451|3.0| 981340584|
+|451|Drama|6201|451|3.0| 941209715|
+|451|Drama|6294|451|3.0| 947261311|
+|451|Drama|6513|451|2.5|1146070190|
+|451|Drama|6714|451|3.0|1099084203|
++---+-----+----+---+---+----------+
+only showing top 20 rows
+
+== Physical Plan ==
+*(6) SortMergeJoin [_c0#8], [_c1#1], Inner
+:- *(3) Sort [_c0#8 ASC NULLS FIRST], false, 0
+:  +- Exchange hashpartitioning(_c0#8, 200)
+:     +- *(2) Filter isnotnull(_c0#8)
+:        +- *(2) GlobalLimit 100
+:           +- Exchange SinglePartition
+:              +- *(1) LocalLimit 100
+:                 +- *(1) FileScan parquet [_c0#8,_c1#9] Batched: true, Format: Parquet, Location: InMemoryFileIndex[hdfs://master:9000/movies/genres.parquet], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<_c0:int,_c1:string>
++- *(5) Sort [_c1#1 ASC NULLS FIRST], false, 0
+   +- Exchange hashpartitioning(_c1#1, 200)
+      +- *(4) Project [_c0#0, _c1#1, _c2#2, _c3#3]
+         +- *(4) Filter isnotnull(_c1#1)
+            +- *(4) FileScan parquet [_c0#0,_c1#1,_c2#2,_c3#3] Batched: true, Format: Parquet, Location: InMemoryFileIndex[hdfs://master:9000/movies/ratings.parquet], PartitionFilters: [], PushedFilters: [IsNotNull(_c1)], ReadSchema: struct<_c0:int,_c1:int,_c2:double,_c3:int>
+Time with choosing join type disabled is 9.9738 sec.
++----+---------------+---+----+---+----------+
+| _c0|            _c1|_c0| _c1|_c2|       _c3|
++----+---------------+---+----+---+----------+
+|   5|         Comedy|  2|   5|3.0| 867039249|
+|   5|          Crime|  2|   5|3.0| 867039249|
+|1408|      Adventure| 15|1408|5.0|1346008714|
+|1408|         Action| 15|1408|5.0|1346008714|
+| 524|          Crime| 24| 524|2.0| 979870484|
+| 524|          Drama| 24| 524|2.0| 979870484|
+|1408|      Adventure| 24|1408|3.0| 979870731|
+|1408|         Action| 24|1408|3.0| 979870731|
+| 902|      Adventure| 36| 902|2.0| 965349039|
+| 902|Science Fiction| 36| 902|2.0| 965349039|
+| 902|        Fantasy| 36| 902|2.0| 965349039|
+|   5|         Comedy| 40|   5|4.0| 862515493|
+|   5|          Crime| 40|   5|4.0| 862515493|
+| 902|      Adventure| 41| 902|4.0|1445255341|
+| 902|Science Fiction| 41| 902|4.0|1445255341|
+| 902|        Fantasy| 41| 902|4.0|1445255341|
+| 524|          Crime| 43| 524|2.5|1179200291|
+| 524|          Drama| 43| 524|2.5|1179200291|
+| 902|      Adventure| 43| 902|4.5|1179197971|
+| 902|Science Fiction| 43| 902|4.5|1179197971|
++----+---------------+---+----+---+----------+
+only showing top 20 rows
+
+== Physical Plan ==
+*(3) BroadcastHashJoin [_c0#8], [_c1#1], Inner, BuildLeft
+:- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)))
+:  +- *(2) Filter isnotnull(_c0#8)
+:     +- *(2) GlobalLimit 100
+:        +- Exchange SinglePartition
+:           +- *(1) LocalLimit 100
+:              +- *(1) FileScan parquet [_c0#8,_c1#9] Batched: true, Format: Parquet, Location: InMemoryFileIndex[hdfs://master:9000/movies/genres.parquet], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<_c0:int,_c1:string>
++- *(3) Project [_c0#0, _c1#1, _c2#2, _c3#3]
+   +- *(3) Filter isnotnull(_c1#1)
+      +- *(3) FileScan parquet [_c0#0,_c1#1,_c2#2,_c3#3] Batched: true, Format: Parquet, Location: InMemoryFileIndex[hdfs://master:9000/movies/ratings.parquet], PartitionFilters: [], PushedFilters: [IsNotNull(_c1)], ReadSchema: struct<_c0:int,_c1:int,_c2:double,_c3:int>
+Time with choosing join type enabled is 5.8504 sec.

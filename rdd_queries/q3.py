@@ -1,7 +1,7 @@
 from pyspark.sql import SparkSession
 from io import StringIO 
 import csv
-import sys
+import time
 spark = SparkSession.builder.appName("q3-rdd").getOrCreate()
 
 sc = spark.sparkContext
@@ -12,9 +12,8 @@ def map1(x):
     rating = float(fields[2])
     return (movie_id, (rating,1))
 
-# def map2(x):
-#     genre =
 
+start_time = time.time()
 ratings = sc.textFile("hdfs://master:9000/movies/ratings.csv")
 genres = sc.textFile("hdfs://master:9000/movies/movie_genres.csv")
 
@@ -31,3 +30,5 @@ map(lambda x: (x[0],(x[1][0]/x[1][1],x[1][1]))).sortByKey(ascending=True)
 
 for i in res.collect():
     print(i)
+
+print("--- %s seconds ---" % (time.time() - start_time))

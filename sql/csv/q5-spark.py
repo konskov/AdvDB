@@ -2,6 +2,8 @@ from pyspark.sql import SparkSession
 import time
 
 spark = SparkSession.builder.appName("q3-spark").getOrCreate()
+start_time = time.time()
+
 ratings = spark.read.format('csv'). \
 			options(header='false',
 				inferSchema='true'). \
@@ -21,7 +23,6 @@ ratings.registerTempTable("ratings")
 genres.registerTempTable("genres")
 movies.registerTempTable("movies")
 
-start_time = time.time()
 
 str2 = "select genre, max(reviews) as reviews " + \
     "from " + \

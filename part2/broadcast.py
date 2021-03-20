@@ -2,16 +2,6 @@ from pyspark.sql import SparkSession
 import pyspark
 import time
 
-# Init()
-# if R not in local storage:
-#     remotely retrive R 
-#     partition into p chunks R1...Rp
-#     save R1...Rp to local storage
-
-# spark = SparkSession.builder.appName("broadcast-rdd").getOrCreate()
-# sc = spark.sparkContext
-
-# data1 =  
 
 def map1(x, join_key):
     fields = x.split(",")
@@ -27,8 +17,8 @@ def broadcast_join(file1, join_key1, file2, join_key2):
         '''x is a record from L, x[0] is the key, x[1] the values'''
         key = x[0]
         newrecs = []
-        if key in broadcast_small_dict.value.keys():
-            for r_match in broadcast_small_dict.value[key]:
+        if key in broadcast_small_dictionary.value.keys():
+            for r_match in broadcast_small_dictionary.value[key]:
                 newrecs.append(([key] + r_match + x[1]))
 
         if newrecs:
@@ -56,18 +46,18 @@ def broadcast_join(file1, join_key1, file2, join_key2):
 
     small = small.map(lambda x: map1(x,jks))
     big = big.map(lambda x: map1(x,jkb))
-    small_dict = {}
+    small_dictionary = {}
 
     for i in small.collect():
         key = i[0]
         value = i[1]
-        if key in small_dict.keys():
-            small_dict[key].append(value)
+        if key in small_dictionary.keys():
+            small_dictionary[key].append(value)
         else:
-            small_dict[key] = []
-            small_dict[key].append(value)
+            small_dictionary[key] = []
+            small_dictionary[key].append(value)
     # we'll be broadcasting a dict
-    broadcast_small_dict = sc.broadcast(small_dict)   
+    broadcast_small_dictionary = sc.broadcast(small_dictionary)   
    
     big = big.flatMap(lambda x: map2(x))
     for i in big.take(120):

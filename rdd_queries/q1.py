@@ -1,7 +1,7 @@
 from pyspark.sql import SparkSession
 from io import StringIO 
 import csv
-import sys
+import time
 spark = SparkSession.builder.appName("q1-rdd").getOrCreate()
 
 sc = spark.sparkContext
@@ -31,6 +31,7 @@ def map1(x):
 def reduce1(x):
     pass
 
+start_time = time.time()
 lines = sc.textFile("hdfs://master:9000/movies/movies.csv")
 res1 = lines. \
 map(lambda x: map1(x)). \
@@ -40,12 +41,5 @@ reduceByKey(lambda x,y: ((x[0],x[1]) if (x[0] > y[0]) else (y[0], y[1]))).sortBy
 for i in res1.collect():
     if i[0] != 0:
         print('(',i[0],',',i[1][1],',', i[1][0],')')
-
-# res =\
-# 	sc.textFile("hdfs://master:9000/movies/movies.csv"). \
-# 	map(lambda x :(int(x.split(",")[2])/12,
-# 		format_name(x.split(",")[1]))). \
-# 	sortByKey(ascending=False). \
-# 	map(lambda x :(x[1], x[0])). \
-# 	take(5)
+print("--- %s seconds ---" % (time.time() - start_time))
 

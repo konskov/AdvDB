@@ -38,7 +38,7 @@ def map3(x):
     y = split_complex(x)
     title = y[1]
     movie_id = y[0]
-    popularity = y[7]
+    popularity = float(y[7])
     return (movie_id, (title, popularity))
 
 def reduce_max(x,y):
@@ -63,11 +63,11 @@ def reduce_min(x,y):
         else:
             return (y[0],y[1],y[2])
 
+start_time = time.time() 
 movies = sc.textFile("hdfs://master:9000/movies/movies.csv")
 genres = sc.textFile("hdfs://master:9000/movies/movie_genres.csv")
 ratings = sc.textFile("hdfs://master:9000/movies/ratings.csv")
  
-start_time = time.time() 
 r = ratings.map(lambda x: map1(x))
 m = movies.map(lambda x: map3(x))
 g = genres.map(lambda x: (x.split(",")[0], x.split(",")[1]))

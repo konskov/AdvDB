@@ -1,6 +1,9 @@
 from pyspark.sql import SparkSession
+import time
 
 spark = SparkSession.builder.appName("q3-spark").getOrCreate()
+start_time = time.time()
+
 ratings = spark.read.format('csv'). \
 			options(header='false',
 				inferSchema='true'). \
@@ -25,3 +28,4 @@ sqlString = "select g._c1 as genre, avg(avg_rating) as average_rating, count(*) 
 
 res = spark.sql(sqlString)
 res.show()
+print("--- %s seconds ---" % (time.time() - start_time))
